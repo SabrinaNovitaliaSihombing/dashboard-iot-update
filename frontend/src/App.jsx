@@ -16,6 +16,7 @@ import LoginAlertBanner from './components/notifications/LoginAlertBanner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import GatewayManagement from './pages/Installation/GatewayManagement';
+import TenantManagement from './pages/Installation/TenantManagement';
 import NodeManagement from './pages/Installation/NodeManagement';
 import UserManagement from './pages/UserManagement';
 import MyDevices from './pages/MyDevices';
@@ -64,6 +65,14 @@ function App() {
               <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
                   <GatewayManagement />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/installation/tenants" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout>
+                  <TenantManagement />
                 </DashboardLayout>
               </ProtectedRoute>
             } />

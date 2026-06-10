@@ -95,8 +95,18 @@ async function seedHistoricalDataIfNeeded() {
           const elecNonCt = isPowerMeter ? (getRandomFloat(80, 100) * mallMultiplier) : 0.00;
           const elecCt = isPowerMeter ? (getRandomFloat(150, 200) * mallMultiplier) : 0.00;
           
+          let activePower = 0.00;
+          let currentVal = 0.00;
+          let voltage = 0.00;
+          let usageKwh = 0.00;
+
           if (isPowerMeter) {
-            deviceKwhAccumulator[devId] += (getRandomFloat(0.5, 1.0) * mallMultiplier);
+            const usageThisHour = (getRandomFloat(0.5, 1.0) * mallMultiplier);
+            deviceKwhAccumulator[devId] += usageThisHour;
+            activePower = getRandomFloat(10, 25) * mallMultiplier;
+            currentVal = (activePower * 1000) / 220;
+            voltage = getRandomFloat(218, 222);
+            usageKwh = usageThisHour;
           }
 
           batchValues.push([
@@ -106,7 +116,11 @@ async function seedHistoricalDataIfNeeded() {
             parseFloat(water.toFixed(2)),
             parseFloat(elecNonCt.toFixed(2)),
             parseFloat(elecCt.toFixed(2)),
-            isPowerMeter ? parseFloat(deviceKwhAccumulator[devId].toFixed(2)) : 0.00
+            isPowerMeter ? parseFloat(deviceKwhAccumulator[devId].toFixed(2)) : 0.00,
+            parseFloat(activePower.toFixed(2)),
+            parseFloat(currentVal.toFixed(2)),
+            parseFloat(voltage.toFixed(2)),
+            parseFloat(usageKwh.toFixed(2))
           ]);
         }
       }
@@ -118,7 +132,7 @@ async function seedHistoricalDataIfNeeded() {
     for (let i = 0; i < batchValues.length; i += chunkSize) {
       const chunk = batchValues.slice(i, i + chunkSize);
       await pool.query(
-        'INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total) VALUES ?',
+        'INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total, active_power, current_val, voltage, usage_kwh_total) VALUES ?',
         [chunk]
       );
     }
@@ -166,16 +180,37 @@ async function runRealTimeSimulationCycle() {
       const elecCt = isPowerMeter ? (getRandomFloat(10, 20) * mallMultiplier) : 0.00;
       
       let rtuKwhTotal = 0.00;
+      let activePower = 0.00;
+      let currentVal = 0.00;
+      let voltage = 0.00;
+      let usageKwh = 0.00;
+
       if (isPowerMeter) {
         const usageThisCycle = getRandomFloat(0.1, 0.3) * mallMultiplier;
         deviceKwhAccumulator[id] += usageThisCycle;
         rtuKwhTotal = parseFloat(deviceKwhAccumulator[id].toFixed(2));
+        activePower = getRandomFloat(10, 25) * mallMultiplier;
+        currentVal = (activePower * 1000) / 220;
+        voltage = getRandomFloat(218, 222);
+        usageKwh = usageThisCycle;
       }
 
       await pool.query(
-        `INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, timestamp, parseFloat(gas.toFixed(2)), parseFloat(water.toFixed(2)), parseFloat(elecNonCt.toFixed(2)), parseFloat(elecCt.toFixed(2)), rtuKwhTotal]
+        `INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total, active_power, current_val, voltage, usage_kwh_total) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id, 
+          timestamp, 
+          parseFloat(gas.toFixed(2)), 
+          parseFloat(water.toFixed(2)), 
+          parseFloat(elecNonCt.toFixed(2)), 
+          parseFloat(elecCt.toFixed(2)), 
+          rtuKwhTotal,
+          parseFloat(activePower.toFixed(2)),
+          parseFloat(currentVal.toFixed(2)),
+          parseFloat(voltage.toFixed(2)),
+          parseFloat(usageKwh.toFixed(2))
+        ]
       );
 
       console.log(`🟢 Device ID ${id} (${device_name}) berstatus [ACTIVE/ON] -> Data Terkirim!`);

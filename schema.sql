@@ -1,7 +1,8 @@
 -- IoT Monitoring Dashboard - MySQL Database Schema
 -- Run this script in your local MySQL instance to set up the tables.
 
-CREATE DATABASE IF NOT EXISTS iot_monitoring;
+DROP DATABASE IF EXISTS iot_monitoring;
+CREATE DATABASE iot_monitoring;
 USE iot_monitoring;
 
 -- 1. Users Table
@@ -29,11 +30,32 @@ CREATE TABLE IF NOT EXISTS Gateways (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Devices (Nodes) Table
--- Stores end-device sensors linked to a gateway and assigned to a specific view-only user.
-CREATE TABLE IF NOT EXISTS Devices (
+-- 3. Tenants Table
+-- Stores tenant details (booths in mall) linked to a gateway.
+CREATE TABLE IF NOT EXISTS Tenants (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_gateway INT,
+    tenant_name VARCHAR(100) NOT NULL,
+    company_name VARCHAR(255),
+    password VARCHAR(255),
+    address TEXT,
+    billing_address TEXT,
+    email VARCHAR(255),
+    username VARCHAR(100),
+    phone VARCHAR(50),
+    handphone VARCHAR(50),
+    allocation_node_type VARCHAR(100),
+    photo VARCHAR(500),
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_gateway) REFERENCES Gateways(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Devices (Nodes) Table
+-- Stores end-device sensors linked to a tenant and assigned to a specific view-only user.
+CREATE TABLE IF NOT EXISTS Devices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_tenant INT,
     id_user_owner INT, -- Assigned view-only user who owns/sees this node
     device_name VARCHAR(100) NOT NULL,
     merk VARCHAR(100),
@@ -43,11 +65,11 @@ CREATE TABLE IF NOT EXISTS Devices (
     status ENUM('active', 'inactive') DEFAULT 'inactive',
     assignment ENUM('assigned', 'unassigned') DEFAULT 'unassigned',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_gateway) REFERENCES Gateways(id) ON DELETE SET NULL,
+    FOREIGN KEY (id_tenant) REFERENCES Tenants(id) ON DELETE SET NULL,
     FOREIGN KEY (id_user_owner) REFERENCES Users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. TelemetryLogs Table
+-- 5. TelemetryLogs Table
 -- Stores time-series data reported by devices.
 CREATE TABLE IF NOT EXISTS TelemetryLogs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -58,6 +80,10 @@ CREATE TABLE IF NOT EXISTS TelemetryLogs (
     electricity_non_ct DECIMAL(10, 2) DEFAULT 0.00,
     electricity_ct DECIMAL(10, 2) DEFAULT 0.00,
     rtu_kwh_total DECIMAL(10, 2) DEFAULT 0.00,
+    active_power DECIMAL(10, 2) DEFAULT 0.00,
+    current_val DECIMAL(10, 2) DEFAULT 0.00,
+    voltage DECIMAL(10, 2) DEFAULT 0.00,
+    usage_kwh_total DECIMAL(10, 2) DEFAULT 0.00,
     INDEX idx_device_timestamp (id_device, timestamp),
     FOREIGN KEY (id_device) REFERENCES Devices(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -78,27 +104,33 @@ INSERT INTO Gateways (id, gateway_name, unit_model, installation_date, longitude
 (2, 'GW-Factory-1', 'GW-V2.1-PRO', '2026-02-10', 106.806038, -6.229746, 'online'),
 (3, 'GW-Warehouse-A', 'GW-V1.5-BASIC', '2026-03-01', 112.752090, -7.257472, 'offline');
 
+-- Seed Tenants
+INSERT INTO Tenants (id, id_gateway, tenant_name, description) VALUES
+(1, 1, 'Starbucks Coffee', 'Ground Floor Booth A-12'),
+(2, 1, 'H&M Store', 'First Floor Main Lobby'),
+(3, 2, 'Ace Hardware Factory Outlet', 'Industrial Zone B');
+
 -- Seed Devices
-INSERT INTO Devices (id, id_gateway, id_user_owner, device_name, merk, installation_date, longitude, latitude, status, assignment) VALUES
+INSERT INTO Devices (id, id_tenant, id_user_owner, device_name, merk, installation_date, longitude, latitude, status, assignment) VALUES
 (1, 1, 2, 'Node-Flow-Sensor-01', 'FlowTech', '2026-01-16', 106.828500, -6.176000, 'active', 'assigned'),
 (2, 1, 2, 'Node-Pressure-Sensor-02', 'PressMax', '2026-01-18', 106.825900, -6.174500, 'active', 'assigned'),
 (3, 2, 3, 'Node-Gas-Detector-01', 'GasGuard', '2026-02-11', 106.807500, -6.231000, 'active', 'assigned'),
 (4, 3, NULL, 'Node-Power-Meter-01', 'Schneider', '2026-03-02', 112.753500, -7.259000, 'inactive', 'unassigned');
 
 -- Seed Sample Telemetry Logs (Today's hours)
-INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total) VALUES
-(1, NOW() - INTERVAL 5 HOUR, 0.00, 24.50, 0.00, 0.00, 0.00),
-(1, NOW() - INTERVAL 4 HOUR, 0.00, 28.10, 0.00, 0.00, 0.00),
-(1, NOW() - INTERVAL 3 HOUR, 0.00, 31.40, 0.00, 0.00, 0.00),
-(1, NOW() - INTERVAL 2 HOUR, 0.00, 29.80, 0.00, 0.00, 0.00),
-(1, NOW() - INTERVAL 1 HOUR, 0.00, 33.20, 0.00, 0.00, 0.00),
-(2, NOW() - INTERVAL 5 HOUR, 0.00, 0.00, 150.30, 280.40, 430.70),
-(2, NOW() - INTERVAL 4 HOUR, 0.00, 0.00, 162.10, 295.20, 457.30),
-(2, NOW() - INTERVAL 3 HOUR, 0.00, 0.00, 158.40, 290.10, 448.50),
-(2, NOW() - INTERVAL 2 HOUR, 0.00, 0.00, 170.80, 312.00, 482.80),
-(2, NOW() - INTERVAL 1 HOUR, 0.00, 0.00, 165.50, 305.60, 471.10),
-(3, NOW() - INTERVAL 5 HOUR, 12.30, 0.00, 0.00, 0.00, 0.00),
-(3, NOW() - INTERVAL 4 HOUR, 15.60, 0.00, 0.00, 0.00, 0.00),
-(3, NOW() - INTERVAL 3 HOUR, 14.10, 0.00, 0.00, 0.00, 0.00),
-(3, NOW() - INTERVAL 2 HOUR, 18.20, 0.00, 0.00, 0.00, 0.00),
-(3, NOW() - INTERVAL 1 HOUR, 16.90, 0.00, 0.00, 0.00, 0.00);
+INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total, active_power, current_val, voltage, usage_kwh_total) VALUES
+(1, NOW() - INTERVAL 5 HOUR, 0.00, 24.50, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(1, NOW() - INTERVAL 4 HOUR, 0.00, 28.10, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(1, NOW() - INTERVAL 3 HOUR, 0.00, 31.40, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(1, NOW() - INTERVAL 2 HOUR, 0.00, 29.80, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(1, NOW() - INTERVAL 1 HOUR, 0.00, 33.20, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(2, NOW() - INTERVAL 5 HOUR, 0.00, 0.00, 150.30, 280.40, 430.70, 12.50, 56.80, 220.50, 5.20),
+(2, NOW() - INTERVAL 4 HOUR, 0.00, 0.00, 162.10, 295.20, 457.30, 13.10, 59.50, 220.10, 10.40),
+(2, NOW() - INTERVAL 3 HOUR, 0.00, 0.00, 158.40, 290.10, 448.50, 12.80, 58.10, 220.30, 15.60),
+(2, NOW() - INTERVAL 2 HOUR, 0.00, 0.00, 170.80, 312.00, 482.80, 13.90, 63.20, 219.80, 20.80),
+(2, NOW() - INTERVAL 1 HOUR, 0.00, 0.00, 165.50, 305.60, 471.10, 13.40, 60.90, 220.20, 26.00),
+(3, NOW() - INTERVAL 5 HOUR, 12.30, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(3, NOW() - INTERVAL 4 HOUR, 15.60, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(3, NOW() - INTERVAL 3 HOUR, 14.10, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(3, NOW() - INTERVAL 2 HOUR, 18.20, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(3, NOW() - INTERVAL 1 HOUR, 16.90, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00);

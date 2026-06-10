@@ -60,8 +60,7 @@ const Simulator = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Local override: deviceId -> true(active) / false(inactive)
-  const [activeOverrides, setActiveOverrides] = useState({});
+
 
   // Chart state
   const [selectedDevice, setSelectedDevice] = useState('all');
@@ -69,7 +68,7 @@ const Simulator = () => {
   const [chartMetric, setChartMetric] = useState('both'); // 'water' | 'electricity' | 'both'
   const [openDropdown, setOpenDropdown] = useState(null); // deviceId or null
 
-  const { markDeviceDeactivated, markDeviceActivated } = useNotification();
+  const { deactivatedDevices, markDeviceDeactivated, markDeviceActivated } = useNotification();
 
   useEffect(() => {
     const load = async () => {
@@ -83,10 +82,6 @@ const Simulator = () => {
         setDevices(dData);
         setGateways(gData);
         setUsers(uData);
-        // Init overrides: all active
-        const init = {};
-        dData.forEach(d => { init[d.id] = true; });
-        setActiveOverrides(init);
       } catch (e) {
         console.error(e);
         setError('Failed to load device data.');
@@ -101,19 +96,12 @@ const Simulator = () => {
   const getOwnerName  = (id) => users.find(u => u.id === id)?.company_name || 'Unassigned';
   const getDeviceName = (id) => devices.find(d => d.id === id)?.device_name || `Device ${id}`;
 
-  const toggleDevice = (id) => {
-    setActiveOverrides(prev => ({ ...prev, [id]: !prev[id] }));
-    setOpenDropdown(null);
-  };
-
   const deactivateDevice = (id) => {
-    setActiveOverrides(prev => ({ ...prev, [id]: false }));
     setOpenDropdown(null);
     markDeviceDeactivated(id, getDeviceName(id));
   };
 
   const activateDevice = (id) => {
-    setActiveOverrides(prev => ({ ...prev, [id]: true }));
     setOpenDropdown(null);
     markDeviceActivated(id, getDeviceName(id));
   };
@@ -134,7 +122,7 @@ const Simulator = () => {
       return dates.map((date, i) => {
         const row = { date };
         devices.forEach((dev) => {
-          if (!activeOverrides[dev.id]) return;
+          if (deactivatedDevices[dev.id]) return;
           const d = telemetryMap[dev.id]?.[i];
           if (!d) return;
           const shortName = dev.device_name.replace('Node-', '').replace('-0', ' ');
@@ -146,7 +134,7 @@ const Simulator = () => {
     } else {
       return telemetryMap[parseInt(selectedDevice)] || [];
     }
-  }, [selectedDevice, devices, telemetryMap, activeOverrides]);
+  }, [selectedDevice, devices, telemetryMap, deactivatedDevices]);
 
   // Combined chart series keys (for "all" mode)
   const allSeriesKeys = useMemo(() => {
@@ -155,7 +143,7 @@ const Simulator = () => {
     return keys;
   }, [chartData, selectedDevice]);
 
-  const inactiveDevices = devices.filter(d => activeOverrides[d.id] === false);
+  const inactiveDevices = devices.filter(d => deactivatedDevices[d.id]);
 
   if (loading) {
     return (
@@ -239,7 +227,7 @@ const Simulator = () => {
                 </tr>
               ) : (
                 devices.map((dev) => {
-                  const isActive = activeOverrides[dev.id] !== false;
+                  const isActive = !deactivatedDevices[dev.id];
                   const usage = todayUsage(telemetryMap[dev.id] || [{ water: 0, electricity: 0 }]);
                   return (
                     <tr key={dev.id} className={`transition-colors ${isActive ? 'hover:bg-slate-50/60' : 'bg-slate-50/40 opacity-60'}`}>
@@ -351,8 +339,8 @@ const Simulator = () => {
                 All Devices (Combined)
               </option>
               {devices.map(dev => (
-                <option key={dev.id} value={dev.id} disabled={!activeOverrides[dev.id]}>
-                  {dev.device_name}{!activeOverrides[dev.id] ? ' (Inactive)' : ''}
+                <option key={dev.id} value={dev.id} disabled={!!deactivatedDevices[dev.id]}>
+                  {dev.device_name}{deactivatedDevices[dev.id] ? ' (Inactive)' : ''}
                 </option>
               ))}
             </select>
@@ -407,7 +395,7 @@ const Simulator = () => {
                     {chartType === 'area' ? (
                       <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <defs>
-                          {devices.filter(d => activeOverrides[d.id]).map((dev, i) => {
+                          {devices.filter(d => !deactivatedDevices[d.id]).map((dev, i) => {
                             const key = dev.device_name.replace('Node-', '').replace('-0', ' ') + '_water';
                             return (
                               <linearGradient key={key} id={`gw_${dev.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -419,10 +407,10 @@ const Simulator = () => {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                        <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {devices.filter(d => activeOverrides[d.id]).map((dev, i) => {
+                        {devices.filter(d => !deactivatedDevices[d.id]).map((dev, i) => {
                           const key = dev.device_name.replace('Node-', '').replace('-0', ' ') + '_water';
                           return (
                             <Area key={key} type="monotone" dataKey={key} name={dev.device_name.replace('Node-', '')}
@@ -436,10 +424,10 @@ const Simulator = () => {
                       <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                        <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {devices.filter(d => activeOverrides[d.id]).map((dev, i) => {
+                        {devices.filter(d => !deactivatedDevices[d.id]).map((dev, i) => {
                           const key = dev.device_name.replace('Node-', '').replace('-0', ' ') + '_water';
                           return <Bar key={key} dataKey={key} name={dev.device_name.replace('Node-', '')} fill={DEVICE_COLORS[i % DEVICE_COLORS.length]} radius={[3, 3, 0, 0]} />;
                         })}
@@ -459,7 +447,7 @@ const Simulator = () => {
                     {chartType === 'area' ? (
                       <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <defs>
-                          {devices.filter(d => activeOverrides[d.id]).map((dev, i) => (
+                          {devices.filter(d => !deactivatedDevices[d.id]).map((dev, i) => (
                             <linearGradient key={`ge_${dev.id}`} id={`ge_${dev.id}`} x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor={DEVICE_COLORS[i % DEVICE_COLORS.length]} stopOpacity={0.3} />
                               <stop offset="95%" stopColor={DEVICE_COLORS[i % DEVICE_COLORS.length]} stopOpacity={0} />
@@ -468,10 +456,10 @@ const Simulator = () => {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                        <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {devices.filter(d => activeOverrides[d.id]).map((dev, i) => {
+                        {devices.filter(d => !deactivatedDevices[d.id]).map((dev, i) => {
                           const key = dev.device_name.replace('Node-', '').replace('-0', ' ') + '_electricity';
                           return (
                             <Area key={key} type="monotone" dataKey={key} name={dev.device_name.replace('Node-', '')}
@@ -485,10 +473,10 @@ const Simulator = () => {
                       <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                        <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {devices.filter(d => activeOverrides[d.id]).map((dev, i) => {
+                        {devices.filter(d => !deactivatedDevices[d.id]).map((dev, i) => {
                           const key = dev.device_name.replace('Node-', '').replace('-0', ' ') + '_electricity';
                           return <Bar key={key} dataKey={key} name={dev.device_name.replace('Node-', '')} fill={DEVICE_COLORS[i % DEVICE_COLORS.length]} radius={[3, 3, 0, 0]} />;
                         })}
@@ -498,7 +486,7 @@ const Simulator = () => {
                 </div>
               )}
 
-              {devices.filter(d => activeOverrides[d.id]).length === 0 && (
+              {devices.filter(d => !deactivatedDevices[d.id]).length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                   <Layers className="w-10 h-10 mb-3 opacity-30" />
                   <p className="font-semibold text-sm">All devices are inactive. Activate at least one device to see data.</p>
@@ -509,7 +497,7 @@ const Simulator = () => {
             /* ── Single Device View ── */
             (() => {
               const dev = devices.find(d => d.id === parseInt(selectedDevice));
-              const isActive = activeOverrides[parseInt(selectedDevice)] !== false;
+              const isActive = !deactivatedDevices[parseInt(selectedDevice)];
 
               if (!isActive) {
                 return (
@@ -549,7 +537,7 @@ const Simulator = () => {
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                            <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} />
                             <Area type="monotone" dataKey="water" name="Water" stroke="#06b6d4" fill="url(#waterGrad)" strokeWidth={2.5} dot={false} />
                           </AreaChart>
@@ -557,7 +545,7 @@ const Simulator = () => {
                           <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                            <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} />
                             <Bar dataKey="water" name="Water" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                           </BarChart>
@@ -583,7 +571,7 @@ const Simulator = () => {
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                            <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} />
                             <Area type="monotone" dataKey="electricity" name="Electricity" stroke="#f59e0b" fill="url(#elecGrad)" strokeWidth={2.5} dot={false} />
                           </AreaChart>
@@ -591,7 +579,7 @@ const Simulator = () => {
                           <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} interval={4} />
-                            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                            <YAxis scale="log" domain={['auto', 'auto']} allowDataOverflow tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} />
                             <Bar dataKey="electricity" name="Electricity" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                           </BarChart>

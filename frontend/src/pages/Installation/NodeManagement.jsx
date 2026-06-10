@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { deviceService, gatewayService, userService } from '../../services/api';
+import { deviceService, tenantService, userService } from '../../services/api';
 import { Server, Plus, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 
 const NodeManagement = () => {
   const [devices, setDevices] = useState([]);
-  const [gateways, setGateways] = useState([]);
+  const [tenants, setTenants] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,19 +19,19 @@ const NodeManagement = () => {
   const [installationDate, setInstallationDate] = useState('');
   const [longitude, setLongitude] = useState('');
   const [latitude, setLatitude] = useState('');
-  const [idGateway, setIdGateway] = useState('');
+  const [idTenant, setIdTenant] = useState('');
   const [idUserOwner, setIdUserOwner] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [dData, gData, uData] = await Promise.all([
+      const [dData, tData, uData] = await Promise.all([
         deviceService.getAll(),
-        gatewayService.getAll(),
+        tenantService.getAll(),
         userService.getAll()
       ]);
       setDevices(dData);
-      setGateways(gData);
+      setTenants(tData);
       // Filter only user with role 'view' for the Owner assignment dropdown
       setUsers(uData.filter(u => u.role === 'view'));
     } catch (err) {
@@ -53,7 +53,7 @@ const NodeManagement = () => {
     setInstallationDate('');
     setLongitude('');
     setLatitude('');
-    setIdGateway('');
+    setIdTenant('');
     setIdUserOwner('');
     setIsOpen(true);
   };
@@ -65,7 +65,7 @@ const NodeManagement = () => {
     setInstallationDate(dev.installation_date || '');
     setLongitude(dev.longitude || '');
     setLatitude(dev.latitude || '');
-    setIdGateway(dev.id_gateway || '');
+    setIdTenant(dev.id_tenant || '');
     setIdUserOwner(dev.id_user_owner || '');
     setIsOpen(true);
   };
@@ -83,7 +83,7 @@ const NodeManagement = () => {
       installation_date: installationDate || null,
       longitude: parseFloat(longitude),
       latitude: parseFloat(latitude),
-      id_gateway: idGateway ? parseInt(idGateway) : null,
+      id_tenant: idTenant ? parseInt(idTenant) : null,
       id_user_owner: idUserOwner ? parseInt(idUserOwner) : null,
       status: 'active'
     };
@@ -112,12 +112,6 @@ const NodeManagement = () => {
         alert("Error deleting device node");
       }
     }
-  };
-
-  // Helper mapping names
-  const getGatewayName = (gwId) => {
-    const gw = gateways.find(g => g.id === gwId);
-    return gw ? gw.gateway_name : 'No Gateway';
   };
 
   const getOwnerName = (ownerId) => {
@@ -160,7 +154,7 @@ const NodeManagement = () => {
               <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                 <th className="px-6 py-4">Node Name</th>
                 <th className="px-6 py-4">Brand</th>
-                <th className="px-6 py-4">Gateway</th>
+                <th className="px-6 py-4">Tenant</th>
                 <th className="px-6 py-4">Assigned Owner</th>
                 <th className="px-6 py-4">Coordinates</th>
                 <th className="px-6 py-4">Status</th>
@@ -186,7 +180,7 @@ const NodeManagement = () => {
                     <td className="px-6 py-4 font-medium">{dev.merk || "-"}</td>
                     <td className="px-6 py-4">
                       <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded text-xs text-slate-600 font-bold">
-                        {getGatewayName(dev.id_gateway)}
+                        {dev.tenant_name || 'No Tenant'}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-blue-600">
@@ -308,17 +302,17 @@ const NodeManagement = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Gateway Dropdown Selector */}
+                {/* Tenant Dropdown Selector */}
                 <div>
-                  <label className="block text-slate-500 text-xs font-bold mb-1.5 uppercase">Gateway Connection</label>
+                  <label className="block text-slate-500 text-xs font-bold mb-1.5 uppercase">Tenant Assignment</label>
                   <select
-                    value={idGateway}
-                    onChange={(e) => setIdGateway(e.target.value)}
+                    value={idTenant}
+                    onChange={(e) => setIdTenant(e.target.value)}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer"
                   >
-                    <option value="">No Gateway Connection</option>
-                    {gateways.map(g => (
-                      <option key={g.id} value={g.id}>{g.gateway_name}</option>
+                    <option value="">No Tenant Assignment</option>
+                    {tenants.map(t => (
+                      <option key={t.id} value={t.id}>{t.tenant_name}</option>
                     ))}
                   </select>
                 </div>

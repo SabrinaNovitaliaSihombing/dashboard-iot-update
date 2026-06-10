@@ -85,6 +85,37 @@ export const deviceService = {
   }
 };
 
+export const tenantService = {
+  getAll: async () => {
+    const response = await api.get('/tenants');
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/tenants', data);
+    return response.data;
+  },
+  createForm: async (formData) => {
+    const response = await api.post('/tenants', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/tenants/${id}`, data);
+    return response.data;
+  },
+  updateForm: async (id, formData) => {
+    const response = await api.put(`/tenants/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/tenants/${id}`);
+    return response.data;
+  }
+};
+
 export const telemetryService = {
   getStats: async (filter = 'Today') => {
     const response = await api.get('/telemetry', { params: { filter } });

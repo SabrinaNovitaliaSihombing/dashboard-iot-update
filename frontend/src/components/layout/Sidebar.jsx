@@ -11,7 +11,8 @@ import {
   ChevronDown, 
   ChevronUp,
   Cpu,
-  Activity
+  Activity,
+  Store
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -93,6 +94,19 @@ const Sidebar = () => {
                     >
                       <Router className="w-4 h-4" />
                       Gateways
+                    </NavLink>
+                    <NavLink 
+                      to="/installation/tenants"
+                      className={({ isActive }) => 
+                        `flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                          isActive 
+                            ? 'bg-slate-800 text-blue-400 border-l-2 border-blue-500' 
+                            : 'hover:bg-slate-800 hover:text-white text-slate-400'
+                        }`
+                      }
+                    >
+                      <Store className="w-4 h-4" />
+                      Tenants
                     </NavLink>
                     <NavLink 
                       to="/installation/nodes"
