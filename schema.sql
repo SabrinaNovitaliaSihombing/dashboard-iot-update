@@ -34,7 +34,6 @@ CREATE TABLE IF NOT EXISTS Gateways (
 -- Stores tenant details (booths in mall) linked to a gateway.
 CREATE TABLE IF NOT EXISTS Tenants (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_gateway INT,
     tenant_name VARCHAR(100) NOT NULL,
     company_name VARCHAR(255),
     password VARCHAR(255),
@@ -47,8 +46,7 @@ CREATE TABLE IF NOT EXISTS Tenants (
     allocation_node_type VARCHAR(100),
     photo VARCHAR(500),
     description VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_gateway) REFERENCES Gateways(id) ON DELETE SET NULL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Devices (Nodes) Table
@@ -56,6 +54,7 @@ CREATE TABLE IF NOT EXISTS Tenants (
 CREATE TABLE IF NOT EXISTS Devices (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_tenant INT,
+    id_gateway INT,
     id_user_owner INT, -- Assigned view-only user who owns/sees this node
     device_name VARCHAR(100) NOT NULL,
     merk VARCHAR(100),
@@ -64,6 +63,7 @@ CREATE TABLE IF NOT EXISTS Devices (
     assignment ENUM('assigned', 'unassigned') DEFAULT 'unassigned',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_tenant) REFERENCES Tenants(id) ON DELETE SET NULL,
+    FOREIGN KEY (id_gateway) REFERENCES Gateways(id) ON DELETE SET NULL,
     FOREIGN KEY (id_user_owner) REFERENCES Users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -103,17 +103,17 @@ INSERT INTO Gateways (id, gateway_name, unit_model, installation_date, longitude
 (3, 'GW-Warehouse-A', 'GW-V1.5-BASIC', '2026-03-01', 112.752090, -7.257472, 'offline');
 
 -- Seed Tenants
-INSERT INTO Tenants (id, id_gateway, tenant_name, description) VALUES
-(1, 1, 'Starbucks Coffee', 'Ground Floor Booth A-12'),
-(2, 1, 'H&M Store', 'First Floor Main Lobby'),
-(3, 2, 'Ace Hardware Factory Outlet', 'Industrial Zone B');
+INSERT INTO Tenants (id, tenant_name, description) VALUES
+(1, 'Starbucks Coffee', 'Ground Floor Booth A-12'),
+(2, 'H&M Store', 'First Floor Main Lobby'),
+(3, 'Ace Hardware Factory Outlet', 'Industrial Zone B');
 
 -- Seed Devices
-INSERT INTO Devices (id, id_tenant, id_user_owner, device_name, merk, installation_date, status, assignment) VALUES
-(1, 1, 2, 'Node-Flow-Sensor-01', 'FlowTech', '2026-01-16', 'active', 'assigned'),
-(2, 1, 2, 'Node-Pressure-Sensor-02', 'PressMax', '2026-01-18', 'active', 'assigned'),
-(3, 2, 3, 'Node-Gas-Detector-01', 'GasGuard', '2026-02-11', 'active', 'assigned'),
-(4, 3, NULL, 'Node-Power-Meter-01', 'Schneider', '2026-03-02', 'inactive', 'unassigned');
+INSERT INTO Devices (id, id_tenant, id_gateway, id_user_owner, device_name, merk, installation_date, status, assignment) VALUES
+(1, 1, 1, 2, 'Node-Flow-Sensor-01', 'FlowTech', '2026-01-16', 'active', 'assigned'),
+(2, 1, 1, 2, 'Node-Pressure-Sensor-02', 'PressMax', '2026-01-18', 'active', 'assigned'),
+(3, 2, 1, 3, 'Node-Gas-Detector-01', 'GasGuard', '2026-02-11', 'active', 'assigned'),
+(4, 3, 2, NULL, 'Node-Power-Meter-01', 'Schneider', '2026-03-02', 'inactive', 'unassigned');
 
 -- Seed Sample Telemetry Logs (Today's hours)
 INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total, active_power, current_val, voltage, usage_kwh_total) VALUES

@@ -289,9 +289,10 @@ app.delete('/api/gateways/:id', authenticateUser, async (req, res) => {
 app.get('/api/devices', authenticateUser, async (req, res) => {
   try {
     let query = `
-      SELECT d.*, t.tenant_name 
+      SELECT d.*, t.tenant_name, g.gateway_name 
       FROM Devices d 
       LEFT JOIN Tenants t ON d.id_tenant = t.id
+      LEFT JOIN Gateways g ON d.id_gateway = g.id
     `;
     let params = [];
     if (req.user.role !== 'admin') {
@@ -310,18 +311,20 @@ app.post('/api/devices', authenticateUser, async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
-  const { id_tenant, id_user_owner, device_name, merk, installation_date, status } = req.body;
+  const { id_tenant, id_gateway, id_user_owner, device_name, merk, installation_date, status } = req.body;
   const parsedOwner = id_user_owner ? parseInt(id_user_owner) : null;
   const parsedTenant = id_tenant ? parseInt(id_tenant) : null;
+  const parsedGateway = id_gateway ? parseInt(id_gateway) : null;
 
   try {
     const [result] = await db.query(
-      'INSERT INTO Devices (id_tenant, id_user_owner, device_name, merk, installation_date, status, assignment) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [parsedTenant, parsedOwner, device_name, merk, installation_date || null, status || 'inactive', parsedOwner ? 'assigned' : 'unassigned']
+      'INSERT INTO Devices (id_tenant, id_gateway, id_user_owner, device_name, merk, installation_date, status, assignment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [parsedTenant, parsedGateway, parsedOwner, device_name, merk, installation_date || null, status || 'inactive', parsedOwner ? 'assigned' : 'unassigned']
     );
     res.status(201).json({
       id: result.insertId,
       id_tenant: parsedTenant,
+      id_gateway: parsedGateway,
       id_user_owner: parsedOwner,
       device_name,
       merk,
@@ -340,18 +343,20 @@ app.put('/api/devices/:id', authenticateUser, async (req, res) => {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
   const id = parseInt(req.params.id);
-  const { id_tenant, id_user_owner, device_name, merk, installation_date, status } = req.body;
+  const { id_tenant, id_gateway, id_user_owner, device_name, merk, installation_date, status } = req.body;
   const parsedOwner = id_user_owner ? parseInt(id_user_owner) : null;
   const parsedTenant = id_tenant ? parseInt(id_tenant) : null;
+  const parsedGateway = id_gateway ? parseInt(id_gateway) : null;
 
   try {
     await db.query(
-      'UPDATE Devices SET id_tenant = ?, id_user_owner = ?, device_name = ?, merk = ?, installation_date = ?, status = ?, assignment = ? WHERE id = ?',
-      [parsedTenant, parsedOwner, device_name, merk, installation_date || null, status, parsedOwner ? 'assigned' : 'unassigned', id]
+      'UPDATE Devices SET id_tenant = ?, id_gateway = ?, id_user_owner = ?, device_name = ?, merk = ?, installation_date = ?, status = ?, assignment = ? WHERE id = ?',
+      [parsedTenant, parsedGateway, parsedOwner, device_name, merk, installation_date || null, status, parsedOwner ? 'assigned' : 'unassigned', id]
     );
     res.json({
       id,
       id_tenant: parsedTenant,
+      id_gateway: parsedGateway,
       id_user_owner: parsedOwner,
       device_name,
       merk,
@@ -386,14 +391,12 @@ app.get('/api/tenants', authenticateUser, async (req, res) => {
     const query = `
       SELECT 
         t.*,
-        g.gateway_name,
         tl.active_power,
         tl.current_val,
         tl.voltage,
         tl.rtu_kwh_total,
         tl.usage_kwh_total
       FROM Tenants t
-      LEFT JOIN Gateways g ON t.id_gateway = g.id
       LEFT JOIN Devices d ON d.id_tenant = t.id
       LEFT JOIN (
         SELECT tl1.* 
@@ -420,9 +423,8 @@ app.post('/api/tenants', authenticateUser, upload.single('photo'), async (req, r
   const {
     tenant_name, company_name, password, address,
     billing_address, email, username, phone, handphone,
-    allocation_node_type, description, id_gateway
+    allocation_node_type, description
   } = req.body;
-  const parsedGateway = id_gateway ? parseInt(id_gateway) : null;
   const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
 
   // Hash password if provided
@@ -431,17 +433,17 @@ app.post('/api/tenants', authenticateUser, upload.single('photo'), async (req, r
   try {
     const [result] = await db.query(
       `INSERT INTO Tenants 
-        (tenant_name, company_name, password, address, billing_address, email, username, phone, handphone, allocation_node_type, photo, description, id_gateway) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (tenant_name, company_name, password, address, billing_address, email, username, phone, handphone, allocation_node_type, photo, description) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [tenant_name, company_name || null, hashedPassword, address || null, billing_address || null,
        email || null, username || null, phone || null, handphone || null,
-       allocation_node_type || null, photoPath, description || null, parsedGateway]
+       allocation_node_type || null, photoPath, description || null]
     );
     res.status(201).json({
       id: result.insertId,
       tenant_name, company_name, address, billing_address, email,
       username, phone, handphone, allocation_node_type,
-      photo: photoPath, description, id_gateway: parsedGateway
+      photo: photoPath, description
     });
   } catch (error) {
     console.error(error);
@@ -457,9 +459,8 @@ app.put('/api/tenants/:id', authenticateUser, upload.single('photo'), async (req
   const {
     tenant_name, company_name, password, address,
     billing_address, email, username, phone, handphone,
-    allocation_node_type, description, id_gateway
+    allocation_node_type, description
   } = req.body;
-  const parsedGateway = id_gateway ? parseInt(id_gateway) : null;
 
   try {
     // Get existing tenant to preserve photo if not uploading new one
@@ -478,16 +479,16 @@ app.put('/api/tenants/:id', authenticateUser, upload.single('photo'), async (req
       `UPDATE Tenants SET 
         tenant_name=?, company_name=?, password=?, address=?, billing_address=?,
         email=?, username=?, phone=?, handphone=?, allocation_node_type=?,
-        photo=?, description=?, id_gateway=?
+        photo=?, description=?
        WHERE id=?`,
       [tenant_name, company_name || null, finalPassword, address || null, billing_address || null,
        email || null, username || null, phone || null, handphone || null,
-       allocation_node_type || null, photoPath, description || null, parsedGateway, id]
+       allocation_node_type || null, photoPath, description || null, id]
     );
     res.json({
       id, tenant_name, company_name, address, billing_address, email,
       username, phone, handphone, allocation_node_type,
-      photo: photoPath, description, id_gateway: parsedGateway
+      photo: photoPath, description
     });
   } catch (error) {
     console.error(error);

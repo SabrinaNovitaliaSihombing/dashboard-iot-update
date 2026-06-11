@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { tenantService, gatewayService } from '../../services/api';
+import { tenantService } from '../../services/api';
 import { Store, Plus, Edit2, Trash2, X, AlertCircle, Upload, Image } from 'lucide-react';
 
 const ALLOCATION_TYPES = ['Single Phase', 'Three Phase', 'Mixed', 'Industrial', 'Commercial'];
@@ -16,12 +16,10 @@ const emptyForm = {
   handphone: '',
   allocation_node_type: '',
   description: '',
-  id_gateway: '',
 };
 
 const TenantManagement = () => {
   const [tenants, setTenants] = useState([]);
-  const [gateways, setGateways] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -38,12 +36,8 @@ const TenantManagement = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tData, gData] = await Promise.all([
-        tenantService.getAll(),
-        gatewayService.getAll()
-      ]);
+      const tData = await tenantService.getAll();
       setTenants(tData);
-      setGateways(gData);
     } catch (err) {
       console.error(err);
       setError("Failed to load tenant assets.");
@@ -83,7 +77,6 @@ const TenantManagement = () => {
       handphone: tenant.handphone || '',
       allocation_node_type: tenant.allocation_node_type || '',
       description: tenant.description || '',
-      id_gateway: tenant.id_gateway || '',
     });
     setPhotoFile(null);
     setPhotoPreview(tenant.photo ? `http://localhost:5005${tenant.photo}` : null);
@@ -183,7 +176,6 @@ const TenantManagement = () => {
               <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                 <th className="px-6 py-4">Tenant / Company</th>
                 <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4">Assigned Gateway</th>
                 <th className="px-6 py-4">Node Type</th>
                 <th className="px-6 py-4">Active Power (kW)</th>
                 <th className="px-6 py-4">Current (A)</th>
@@ -226,11 +218,6 @@ const TenantManagement = () => {
                         {t.email && <div>{t.email}</div>}
                         {t.phone && <div>{t.phone}</div>}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded text-xs text-slate-600 font-bold">
-                        {t.gateway_name || 'No Gateway'}
-                      </span>
                     </td>
                     <td className="px-6 py-4 text-xs text-slate-500">{t.allocation_node_type || '-'}</td>
                     <td className="px-6 py-4 font-bold text-slate-800">
@@ -458,21 +445,6 @@ const TenantManagement = () => {
                       />
                     </div>
 
-                    {/* Gateway */}
-                    <div className="col-span-2">
-                      <label className="block text-xs font-bold text-slate-500 mb-1">Gateway Parent</label>
-                      <select
-                        name="id_gateway"
-                        value={form.id_gateway}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all cursor-pointer"
-                      >
-                        <option value="">Select Gateway</option>
-                        {gateways.map(g => (
-                          <option key={g.id} value={g.id}>{g.gateway_name}</option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
                 </div>
               </div>

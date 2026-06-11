@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { deviceService, tenantService, userService } from '../../services/api';
+import { deviceService, tenantService, userService, gatewayService } from '../../services/api';
 import { Server, Plus, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 
 const NodeManagement = () => {
   const [devices, setDevices] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [users, setUsers] = useState([]);
+  const [gateways, setGateways] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -13,25 +14,28 @@ const NodeManagement = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-    // Form Fields
+  // Form Fields
   const [deviceName, setDeviceName] = useState('');
   const [merk, setMerk] = useState('');
   const [installationDate, setInstallationDate] = useState('');
   const [idTenant, setIdTenant] = useState('');
+  const [idGateway, setIdGateway] = useState('');
   const [idUserOwner, setIdUserOwner] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [dData, tData, uData] = await Promise.all([
+      const [dData, tData, uData, gData] = await Promise.all([
         deviceService.getAll(),
         tenantService.getAll(),
-        userService.getAll()
+        userService.getAll(),
+        gatewayService.getAll()
       ]);
       setDevices(dData);
       setTenants(tData);
       // Filter only user with role 'view' for the Owner assignment dropdown
       setUsers(uData.filter(u => u.role === 'view'));
+      setGateways(gData);
     } catch (err) {
       console.error(err);
       setError("Failed to load installation assets.");
@@ -50,6 +54,7 @@ const NodeManagement = () => {
     setMerk('');
     setInstallationDate('');
     setIdTenant('');
+    setIdGateway('');
     setIdUserOwner('');
     setIsOpen(true);
   };
@@ -60,6 +65,7 @@ const NodeManagement = () => {
     setMerk(dev.merk || '');
     setInstallationDate(dev.installation_date || '');
     setIdTenant(dev.id_tenant || '');
+    setIdGateway(dev.id_gateway || '');
     setIdUserOwner(dev.id_user_owner || '');
     setIsOpen(true);
   };
@@ -70,12 +76,17 @@ const NodeManagement = () => {
       alert("Please fill in Device Name.");
       return;
     }
+    if (!idGateway) {
+      alert("Please select a Gateway.");
+      return;
+    }
 
     const payload = {
       device_name: deviceName,
       merk,
       installation_date: installationDate || null,
       id_tenant: idTenant ? parseInt(idTenant) : null,
+      id_gateway: parseInt(idGateway),
       id_user_owner: idUserOwner ? parseInt(idUserOwner) : null,
       status: 'active'
     };
@@ -148,6 +159,7 @@ const NodeManagement = () => {
                 <th className="px-6 py-4">Node Name</th>
                 <th className="px-6 py-4">Brand</th>
                 <th className="px-6 py-4">Tenant</th>
+                <th className="px-6 py-4">Gateway</th>
                 <th className="px-6 py-4">Assigned Owner</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-center">Actions</th>
@@ -156,7 +168,7 @@ const NodeManagement = () => {
             <tbody className="divide-y divide-slate-100 text-sm font-semibold text-slate-600">
               {devices.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-slate-400 font-medium">
+                  <td colSpan="8" className="px-6 py-12 text-center text-slate-400 font-medium">
                     No devices installed yet. Click "Add Node" to create one.
                   </td>
                 </tr>
@@ -173,6 +185,11 @@ const NodeManagement = () => {
                     <td className="px-6 py-4">
                       <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded text-xs text-slate-600 font-bold">
                         {dev.tenant_name || 'No Tenant'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded text-xs text-slate-600 font-bold">
+                        {dev.gateway_name || 'No Gateway'}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-blue-600">
@@ -264,6 +281,21 @@ const NodeManagement = () => {
               </div>
 
 
+
+              <div>
+                <label className="block text-slate-500 text-xs font-bold mb-1.5 uppercase">Gateway Parent *</label>
+                <select
+                  required
+                  value={idGateway}
+                  onChange={(e) => setIdGateway(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer"
+                >
+                  <option value="">Select Gateway</option>
+                  {gateways.map(g => (
+                    <option key={g.id} value={g.id}>{g.gateway_name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Tenant Dropdown Selector */}
