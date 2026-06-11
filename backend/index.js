@@ -310,14 +310,14 @@ app.post('/api/devices', authenticateUser, async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
-  const { id_tenant, id_user_owner, device_name, merk, installation_date, longitude, latitude, status } = req.body;
+  const { id_tenant, id_user_owner, device_name, merk, installation_date, status } = req.body;
   const parsedOwner = id_user_owner ? parseInt(id_user_owner) : null;
   const parsedTenant = id_tenant ? parseInt(id_tenant) : null;
 
   try {
     const [result] = await db.query(
-      'INSERT INTO Devices (id_tenant, id_user_owner, device_name, merk, installation_date, longitude, latitude, status, assignment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [parsedTenant, parsedOwner, device_name, merk, installation_date || null, parseFloat(longitude), parseFloat(latitude), status || 'inactive', parsedOwner ? 'assigned' : 'unassigned']
+      'INSERT INTO Devices (id_tenant, id_user_owner, device_name, merk, installation_date, status, assignment) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [parsedTenant, parsedOwner, device_name, merk, installation_date || null, status || 'inactive', parsedOwner ? 'assigned' : 'unassigned']
     );
     res.status(201).json({
       id: result.insertId,
@@ -326,8 +326,6 @@ app.post('/api/devices', authenticateUser, async (req, res) => {
       device_name,
       merk,
       installation_date,
-      longitude: parseFloat(longitude),
-      latitude: parseFloat(latitude),
       status: status || 'inactive',
       assignment: parsedOwner ? 'assigned' : 'unassigned'
     });
@@ -342,14 +340,14 @@ app.put('/api/devices/:id', authenticateUser, async (req, res) => {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
   const id = parseInt(req.params.id);
-  const { id_tenant, id_user_owner, device_name, merk, installation_date, longitude, latitude, status } = req.body;
+  const { id_tenant, id_user_owner, device_name, merk, installation_date, status } = req.body;
   const parsedOwner = id_user_owner ? parseInt(id_user_owner) : null;
   const parsedTenant = id_tenant ? parseInt(id_tenant) : null;
 
   try {
     await db.query(
-      'UPDATE Devices SET id_tenant = ?, id_user_owner = ?, device_name = ?, merk = ?, installation_date = ?, longitude = ?, latitude = ?, status = ?, assignment = ? WHERE id = ?',
-      [parsedTenant, parsedOwner, device_name, merk, installation_date || null, parseFloat(longitude), parseFloat(latitude), status, parsedOwner ? 'assigned' : 'unassigned', id]
+      'UPDATE Devices SET id_tenant = ?, id_user_owner = ?, device_name = ?, merk = ?, installation_date = ?, status = ?, assignment = ? WHERE id = ?',
+      [parsedTenant, parsedOwner, device_name, merk, installation_date || null, status, parsedOwner ? 'assigned' : 'unassigned', id]
     );
     res.json({
       id,
@@ -358,8 +356,6 @@ app.put('/api/devices/:id', authenticateUser, async (req, res) => {
       device_name,
       merk,
       installation_date,
-      longitude: parseFloat(longitude),
-      latitude: parseFloat(latitude),
       status,
       assignment: parsedOwner ? 'assigned' : 'unassigned'
     });
@@ -520,6 +516,13 @@ app.delete('/api/tenants/:id', authenticateUser, async (req, res) => {
   }
 });
 
+// Helper to get standard SQL string in WITA (UTC+8) timezone
+const getWitaTimeString = (date) => {
+  const witaDate = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${witaDate.getUTCFullYear()}-${pad(witaDate.getUTCMonth() + 1)}-${pad(witaDate.getUTCDate())} ${pad(witaDate.getUTCHours())}:${pad(witaDate.getUTCMinutes())}:${pad(witaDate.getUTCSeconds())}`;
+};
+
 // --- TELEMETRY / STATS ROUTES ---
 app.get('/api/telemetry', authenticateUser, async (req, res) => {
   const { filter } = req.query; // 'Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days'
@@ -557,13 +560,11 @@ app.get('/api/telemetry', authenticateUser, async (req, res) => {
     }
 
     // 3. Query logs for allowed devices within date bounds
-    // We format timestamps to standard SQL format for compatibility
-    const startSql = startTime.toISOString().slice(0, 19).replace('T', ' ');
-    const endSql = now.toISOString().slice(0, 19).replace('T', ' ');
+    const startSql = getWitaTimeString(startTime);
+    const endSql = getWitaTimeString(now);
 
-    // Using placeholder IN expansion manually since mysql2 pool supports array binding: [allowedDeviceIds]
     const [logs] = await db.query(
-      'SELECT id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total FROM TelemetryLogs WHERE id_device IN (?) AND timestamp >= ? AND timestamp <= ?',
+      'SELECT id_device, HOUR(timestamp) as log_hour, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total FROM TelemetryLogs WHERE id_device IN (?) AND timestamp >= ? AND timestamp <= ?',
       [allowedDeviceIds, startSql, endSql]
     );
 
@@ -572,7 +573,7 @@ app.get('/api/telemetry', authenticateUser, async (req, res) => {
       const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
 
       // Filter logs matching this hour
-      const logsInHour = logs.filter(log => new Date(log.timestamp).getHours() === hour);
+      const logsInHour = logs.filter(log => log.log_hour === hour);
 
       // Sum and average parameters
       const count = logsInHour.length || 1;

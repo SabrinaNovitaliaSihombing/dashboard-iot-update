@@ -60,8 +60,6 @@ CREATE TABLE IF NOT EXISTS Devices (
     device_name VARCHAR(100) NOT NULL,
     merk VARCHAR(100),
     installation_date DATE,
-    longitude DECIMAL(11, 8),
-    latitude DECIMAL(10, 8),
     status ENUM('active', 'inactive') DEFAULT 'inactive',
     assignment ENUM('assigned', 'unassigned') DEFAULT 'unassigned',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -111,11 +109,11 @@ INSERT INTO Tenants (id, id_gateway, tenant_name, description) VALUES
 (3, 2, 'Ace Hardware Factory Outlet', 'Industrial Zone B');
 
 -- Seed Devices
-INSERT INTO Devices (id, id_tenant, id_user_owner, device_name, merk, installation_date, longitude, latitude, status, assignment) VALUES
-(1, 1, 2, 'Node-Flow-Sensor-01', 'FlowTech', '2026-01-16', 106.828500, -6.176000, 'active', 'assigned'),
-(2, 1, 2, 'Node-Pressure-Sensor-02', 'PressMax', '2026-01-18', 106.825900, -6.174500, 'active', 'assigned'),
-(3, 2, 3, 'Node-Gas-Detector-01', 'GasGuard', '2026-02-11', 106.807500, -6.231000, 'active', 'assigned'),
-(4, 3, NULL, 'Node-Power-Meter-01', 'Schneider', '2026-03-02', 112.753500, -7.259000, 'inactive', 'unassigned');
+INSERT INTO Devices (id, id_tenant, id_user_owner, device_name, merk, installation_date, status, assignment) VALUES
+(1, 1, 2, 'Node-Flow-Sensor-01', 'FlowTech', '2026-01-16', 'active', 'assigned'),
+(2, 1, 2, 'Node-Pressure-Sensor-02', 'PressMax', '2026-01-18', 'active', 'assigned'),
+(3, 2, 3, 'Node-Gas-Detector-01', 'GasGuard', '2026-02-11', 'active', 'assigned'),
+(4, 3, NULL, 'Node-Power-Meter-01', 'Schneider', '2026-03-02', 'inactive', 'unassigned');
 
 -- Seed Sample Telemetry Logs (Today's hours)
 INSERT INTO TelemetryLogs (id_device, timestamp, gas, water, electricity_non_ct, electricity_ct, rtu_kwh_total, active_power, current_val, voltage, usage_kwh_total) VALUES

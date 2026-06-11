@@ -62,7 +62,6 @@ const MyDevices = () => {
                 <th className="px-6 py-4">Brand</th>
                 <th className="px-6 py-4">Installation Date</th>
                 <th className="px-6 py-4">Gateway Connection</th>
-                <th className="px-6 py-4">Coordinates</th>
                 <th className="px-6 py-4">Status</th>
               </tr>
             </thead>
@@ -89,10 +88,7 @@ const MyDevices = () => {
                         {getGatewayName(dev.id_gateway)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-500 text-xs">
-                      LAT: {dev.latitude ? parseFloat(dev.latitude).toFixed(5) : "-"} <br />
-                      LNG: {dev.longitude ? parseFloat(dev.longitude).toFixed(5) : "-"}
-                    </td>
+
                     <td className="px-6 py-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide text-white ${
                         dev.status === 'active' ? 'bg-blue-500' : 'bg-slate-400'

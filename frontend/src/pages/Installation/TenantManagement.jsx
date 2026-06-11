@@ -148,7 +148,7 @@ const TenantManagement = () => {
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
+    <div className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">Tenant Management</h1>
@@ -177,7 +177,8 @@ const TenantManagement = () => {
         </div>
       ) : (
         <div className="bg-white border border-slate-100 rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-          <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto">
+          <table className="min-w-max w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                 <th className="px-6 py-4">Tenant / Company</th>
@@ -265,6 +266,7 @@ const TenantManagement = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

@@ -13,12 +13,10 @@ const NodeManagement = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Form Fields
+    // Form Fields
   const [deviceName, setDeviceName] = useState('');
   const [merk, setMerk] = useState('');
   const [installationDate, setInstallationDate] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [latitude, setLatitude] = useState('');
   const [idTenant, setIdTenant] = useState('');
   const [idUserOwner, setIdUserOwner] = useState('');
 
@@ -51,8 +49,6 @@ const NodeManagement = () => {
     setDeviceName('');
     setMerk('');
     setInstallationDate('');
-    setLongitude('');
-    setLatitude('');
     setIdTenant('');
     setIdUserOwner('');
     setIsOpen(true);
@@ -63,8 +59,6 @@ const NodeManagement = () => {
     setDeviceName(dev.device_name);
     setMerk(dev.merk || '');
     setInstallationDate(dev.installation_date || '');
-    setLongitude(dev.longitude || '');
-    setLatitude(dev.latitude || '');
     setIdTenant(dev.id_tenant || '');
     setIdUserOwner(dev.id_user_owner || '');
     setIsOpen(true);
@@ -72,8 +66,8 @@ const NodeManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!deviceName || !longitude || !latitude) {
-      alert("Please fill in Device Name, Latitude, and Longitude.");
+    if (!deviceName) {
+      alert("Please fill in Device Name.");
       return;
     }
 
@@ -81,8 +75,6 @@ const NodeManagement = () => {
       device_name: deviceName,
       merk,
       installation_date: installationDate || null,
-      longitude: parseFloat(longitude),
-      latitude: parseFloat(latitude),
       id_tenant: idTenant ? parseInt(idTenant) : null,
       id_user_owner: idUserOwner ? parseInt(idUserOwner) : null,
       status: 'active'
@@ -120,7 +112,7 @@ const NodeManagement = () => {
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
+    <div className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">Node / Device Installation</h1>
@@ -149,14 +141,14 @@ const NodeManagement = () => {
         </div>
       ) : (
         <div className="bg-white border border-slate-100 rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-          <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto">
+          <table className="min-w-max w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                 <th className="px-6 py-4">Node Name</th>
                 <th className="px-6 py-4">Brand</th>
                 <th className="px-6 py-4">Tenant</th>
                 <th className="px-6 py-4">Assigned Owner</th>
-                <th className="px-6 py-4">Coordinates</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-center">Actions</th>
               </tr>
@@ -186,10 +178,6 @@ const NodeManagement = () => {
                     <td className="px-6 py-4 font-bold text-blue-600">
                       {getOwnerName(dev.id_user_owner)}
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-500 text-xs">
-                      LAT: {dev.latitude ? parseFloat(dev.latitude).toFixed(5) : "-"} <br />
-                      LNG: {dev.longitude ? parseFloat(dev.longitude).toFixed(5) : "-"}
-                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide text-white ${
                         dev.status === 'active' ? 'bg-blue-500' : 'bg-slate-400'
@@ -218,6 +206,7 @@ const NodeManagement = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -274,32 +263,7 @@ const NodeManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold mb-1.5 uppercase">Latitude *</label>
-                  <input
-                    type="number"
-                    step="0.00000001"
-                    required
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="-6.2304"
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold mb-1.5 uppercase">Longitude *</label>
-                  <input
-                    type="number"
-                    step="0.00000001"
-                    required
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="106.8080"
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
+
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Tenant Dropdown Selector */}
